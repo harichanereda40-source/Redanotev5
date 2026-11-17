@@ -1,0 +1,63 @@
+name: Build Reda Note APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Reda Note source
+        shell: bash
+        run: |
+          ZIP_FILE="Reda-Note-v1.1-Source.zip"
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: $ZIP_FILE was not found in the repository root."
+            echo "Repository files:"
+            ls -la
+            exit 1
+          fi
+
+          mkdir -p /tmp/reda-note-source
+          unzip -oq "$ZIP_FILE" -d /tmp/reda-note-source
+          cp -a /tmp/reda-note-source/. .
+
+          test -f settings.gradle
+          test -f build.gradle
+          test -f app/build.gradle
+          echo "Reda Note source extracted and verified."
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reda-Note-APK-v1.1
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
